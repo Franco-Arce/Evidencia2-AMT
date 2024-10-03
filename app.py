@@ -17,15 +17,23 @@ db_config = {
 
 @app.route("/data", methods=["POST"])
 def insert_data():
-    if request.is_json:
-        data = request.get_json()
-        nivel_humedad = data.get("nivel_humedad")  # Recibir el valor de humedad
-        estado_sistema = data.get("estado_sistema")  # Recibir el estado del sistema
+    print("Solicitud recibida")  # Para depurar
 
+    # Verifica si la solicitud tiene formato JSON
+    if request.is_json:
+        print("La solicitud es JSON")
+        data = request.get_json()  # Obtener los datos JSON del cuerpo de la solicitud
+        print("Datos recibidos:", data)
+
+        # Extraer el nivel de humedad y el estado del sistema
+        nivel_humedad = data.get("nivel_humedad")
+        estado_sistema = data.get("estado_sistema")
+
+        # Verifica si ambos datos están presentes
         if nivel_humedad is None or estado_sistema is None:
             return jsonify({"status": "error", "message": "Faltan datos en la solicitud"}), 400
 
-        # Lógica para insertar los datos en la base de datos
+        # Inserta los datos en la base de datos
         try:
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
@@ -40,6 +48,7 @@ def insert_data():
         except mysql.connector.Error as err:
             return jsonify({"status": "error", "message": str(err)}), 500
     else:
+        print("La solicitud no tiene formato JSON")
         return jsonify({"status": "error", "message": "La solicitud debe ser JSON"}), 400
 
 
