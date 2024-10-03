@@ -18,35 +18,80 @@ db_config = {
 def insert_data():
     if request.is_json:
         data = request.get_json()
-        value_data = data.get("value")
+        
+        # Extraer directamente nivel_humedad y estado_sistema
+        nivel_humedad = data.get("nivel_humedad")
+        estado_sistema = data.get("estado_sistema")
 
-        if not value_data:
-            return jsonify({"status": "error", "message": "value data is required"}), 400
-
-        humidity = value_data.get("nivel_humedad")
-        state = value_data.get("estado_sistema")
-
-        if humidity is None or state is None:
-            return jsonify({"status": "error", "message": "nivel_humedad and estado_sistema are required"}), 400
+        if nivel_humedad is None or estado_sistema is None:
+            return jsonify({
+                "status": "error", 
+                "message": "nivel_humedad y estado_sistema son requeridos"
+            }), 400
 
         try:
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
             
-            # Asumiendo que has actualizado la estructura de tu tabla para almacenar ambos valores
+            # Insertar en la tabla datos_humedad
             cursor.execute(
-                "INSERT INTO sensor_data (humidity_level, system_state) VALUES (%s, %s)",
-                (humidity, state)
+                """
+                INSERT INTO datos_humedad (nivel_humedad, estado_sistema) 
+                VALUES (%s, %s)
+                """,
+                (nivel_humedad, estado_sistema)
             )
             
             conn.commit()
             cursor.close()
             conn.close()
-            return jsonify({"status": "success"}), 201
+            
+            return jsonify({
+                "status": "success",
+                "message": "Datos insertados correctamente"
+            }), 201
+            
         except mysql.connector.Error as err:
-            return jsonify({"status": "error", "message": str(err)}), 500
+            return jsonify({
+                "status": "error", 
+                "message": f"Error de base de datos: {str(err)}"
+            }), 500
     else:
-        return jsonify({"status": "error", "message": "Request must be JSON"}), 400
+        return jsonify({
+            "status": "error", 
+            "message": "La solicitud debe ser JSON"
+        }), 400
+
+@app.route("/data", methods=["GET"])
+def get_data():
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute(
+            """
+            SELECT id, nivel_humedad, estado_sistema, fecha_registro 
+            FROM datos_humedad 
+            ORDER BY fecha_registro DESC 
+            LIMIT 10
+            """
+        )
+        
+        results = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "status": "success",
+            "data": results
+        }), 200
+        
+    except mysql.connector.Error as err:
+        return jsonify({
+            "status": "error", 
+            "message": f"Error de base de datos: {str(err)}"
+        }), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
