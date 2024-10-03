@@ -4,43 +4,41 @@ import mysql.connector
 import os
 
 app = Flask(__name__)
-CORS(app)  # Permitir CORS para todas las rutas
+CORS(app)
 
-# Configura tu conexión a la base de datos
 db_config = {
-    "host": "bfmflcykgagrhfka6afi-mysql.services.clever-cloud.com",
-    "user": "ux84ttbmxq3e0gfs",
-    "password": "pdLPgMM64VWz57nsQCvQ",
-    "database": "bfmflcykgagrhfka6afi",
+    "host": "b4fewpnrw63fxilykl7z-mysql.services.clever-cloud.com",
+    "user": "uk0za9yhjsjmmpuy",
+    "password": "eARyZjZuCQETChusm6wW",
+    "database": "b4fewpnrw63fxilykl7z",
     "port": 3306
 }
 
 @app.route("/data", methods=["POST"])
 def insert_data():
-    print("Solicitud recibida")  # Para depurar
-
-    # Verifica si la solicitud tiene formato JSON
     if request.is_json:
-        print("La solicitud es JSON")
-        data = request.get_json()  # Obtener los datos JSON del cuerpo de la solicitud
-        print("Datos recibidos:", data)
+        data = request.get_json()
+        value_data = data.get("value")
 
-        # Extraer el nivel de humedad y el estado del sistema
-        nivel_humedad = data.get("nivel_humedad")
-        estado_sistema = data.get("estado_sistema")
+        if not value_data:
+            return jsonify({"status": "error", "message": "value data is required"}), 400
 
-        # Verifica si ambos datos están presentes
-        if nivel_humedad is None or estado_sistema is None:
-            return jsonify({"status": "error", "message": "Faltan datos en la solicitud"}), 400
+        humidity = value_data.get("nivel_humedad")
+        state = value_data.get("estado_sistema")
 
-        # Inserta los datos en la base de datos
+        if humidity is None or state is None:
+            return jsonify({"status": "error", "message": "nivel_humedad and estado_sistema are required"}), 400
+
         try:
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
+            
+            # Asumiendo que has actualizado la estructura de tu tabla para almacenar ambos valores
             cursor.execute(
-                "INSERT INTO datos_humedad (nivel_humedad, estado_sistema) VALUES (%s, %s)", 
-                (nivel_humedad, estado_sistema)
+                "INSERT INTO sensor_data (humidity_level, system_state) VALUES (%s, %s)",
+                (humidity, state)
             )
+            
             conn.commit()
             cursor.close()
             conn.close()
@@ -48,10 +46,7 @@ def insert_data():
         except mysql.connector.Error as err:
             return jsonify({"status": "error", "message": str(err)}), 500
     else:
-        print("La solicitud no tiene formato JSON")
-        return jsonify({"status": "error", "message": "La solicitud debe ser JSON"}), 400
+        return jsonify({"status": "error", "message": "Request must be JSON"}), 400
 
-
-# Ejecutar la aplicación
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
